@@ -1,30 +1,16 @@
-name: Build Laird Mod
+- name: Install 32-bit libs
+  run: |
+    sudo dpkg --add-architecture i386
+    sudo apt-get update
+    sudo apt-get install -y libc6:i386
 
-on:
-  push:
-    branches: [ main ]
-  workflow_dispatch:
+- name: Download Pawn compiler
+  run: |
+    wget -O pawncc.tar.gz https://github.com/pawn-lang/compiler/releases/download/v3.10.10/pawnc-3.10.10-linux.tar.gz
+    tar -xzf pawncc.tar.gz
+    chmod +x pawnc-3.10.10-linux/bin/pawncc
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    container: michaelace/pawncc:3.10.10-linux
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Unzip project
-        run: |
-          unzip mod.zip -d ./project
-          ls -la ./project
-
-      - name: Compile Laird
-        run: |
-          cd ./project
-          pawncc gamemodes/laird.pwn -i pawno/include -d3 -Z
-
-      - name: Upload compiled AMX
-        uses: actions/upload-artifact@v4
-        with:
-          name: laird-amx
-          path: project/**/*.amx
+- name: Compile Laird
+  run: |
+    cd ./project
+    ../pawnc-3.10.10-linux/bin/pawncc gamemodes/laird.pwn -i pawno/include -d3 -Z
