@@ -10,11 +10,13 @@ jobs:
     runs-on: ubuntu-latest
     container: sacnr/pawncc
     steps:
-      # 1. Удаляем checkout и клонируем вручную (обход отсутствия Node)
-      - name: Checkout (plain git)
+      - name: Install git
+        run: |
+          apt-get update && apt-get install -y git
+
+      - name: Clone repo
         run: |
           git clone --depth 1 https://github.com/${{ github.repository }}.git .
-          ls -la
 
       - name: Unzip project
         run: |
