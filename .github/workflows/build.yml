@@ -8,40 +8,45 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    container: michaelace/pawncc:3.10.10-linux
     steps:
-      - name: Install dependencies
+      # 1. Скачиваем твой mod.zip напрямую по ссылке
+      - name: Download mod.zip
         run: |
-          apt-get update && apt-get install -y unzip
+          curl -L -o mod.zip https://github.com/ila401444-create/Laird-mod/raw/main/mod.zip
+          ls -la mod.zip
 
-      - name: Clone repo
-        run: |
-          # Клонируем в отдельную папку, чтобы не было проблем с точкой
-          git clone --depth 1 https://github.com/${{ github.repository }}.git /tmp/repo
-          # Переносим только mod.zip в рабочую директорию
-          cp /tmp/repo/mod.zip .
-
+      # 2. Распаковываем
       - name: Unzip project
         run: |
-          # Распаковываем архив. Папка "мод моего проекта" появится здесь же.
           unzip mod.zip -d ./project
-          echo "=== Содержимое папки project ==="
+          echo "=== Содержимое ==="
           ls -la ./project
 
+      # 3. Скачиваем компилятор Pawn для Linux
+      - name: Download Pawn Compiler
+        run: |
+          curl -L -o pawncc.tar.gz https://github.com/pawn-lang/compiler/releases/download/v3.10.10/pawnc-3.10.10-linux.tar.gz
+          tar -xzf pawncc.tar.gz
+          ls -la pawnc-3.10.10-linux/bin/
+
+      # 4. Устанавливаем 32-битные библиотеки (компилятор старый, ему это нужно)
+      - name: Install 32-bit libs
+        run: |
+          sudo dpkg --add-architecture i386
+          sudo apt-get update
+          sudo apt-get install -y libc6:i386
+
+      # 5. Компилируем
       - name: Compile Laird
         run: |
-          # Заходим в папку "мод моего проекта" напрямую
-          cd "./project/мод моего проекта"
-          
-          # Заходим в gamemodes и компилируем
-          cd gamemodes
-          
-          # Запускаем компилятор, указывая путь к инклудам на уровень выше
-          pawncc laird.pwn -i ../pawno/include -d3 -Z
+          # Компилятор лежит в папке pawnc-3.10.10-linux/bin
+          # Заходим в папку с модом и запускаем компилятор
+          cd "./project/мод моего проекта/gamemodes"
+          ../../../pawnc-3.10.10-linux/bin/pawncc laird.pwn -i ../pawno/include -d3 -Z
 
+      # 6. Забираем результат
       - name: Upload compiled AMX
         uses: actions/upload-artifact@v4
         with:
           name: laird-amx
-          # Ищем файл .amx
           path: project/**/*.amx
