@@ -8,22 +8,10 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    container: michaelace/pawncc:3.10.10-linux
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y git unzip wget
-
-      - name: Download Pawn compiler
-        run: |
-          # Скачиваем готовый компилятор для Linux (это распространённая сборка)
-          wget -O pawncc.tar.gz https://github.com/pawn-lang/compiler/releases/download/v3.10.10/pawnc-3.10.10-linux.tar.gz
-          tar -xzf pawncc.tar.gz
-          # Обычно внутри папка bin или pawnc, находим исполняемый файл
-          find . -name "pawncc" -type f
 
       - name: Unzip project
         run: |
@@ -32,12 +20,8 @@ jobs:
 
       - name: Compile Laird
         run: |
-          # Ищем, куда распаковался pawncc, и запускаем
-          PAWNCC=$(find . -name "pawncc" -type f | head -n 1)
           cd ./project
-          $PAWNCC gamemodes/laird.pwn -i pawno/include -d3 -Z
-        # Если pawncc в архиве лежит в подпапке bin, путь может быть другим,
-        # но find должен его найти
+          pawncc gamemodes/laird.pwn -i pawno/include -d3 -Z
 
       - name: Upload compiled AMX
         uses: actions/upload-artifact@v4
