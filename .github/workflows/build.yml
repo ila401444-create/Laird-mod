@@ -12,46 +12,36 @@ jobs:
     steps:
       - name: Install dependencies
         run: |
-          apt-get update && apt-get install -y unzip git
+          apt-get update && apt-get install -y unzip
 
       - name: Clone repo
         run: |
-          git clone --depth 1 https://github.com/${{ github.repository }}.git .
+          # Клонируем в отдельную папку, чтобы не было проблем с точкой
+          git clone --depth 1 https://github.com/${{ github.repository }}.git /tmp/repo
+          # Переносим только mod.zip в рабочую директорию
+          cp /tmp/repo/mod.zip .
 
       - name: Unzip project
         run: |
+          # Распаковываем архив. Папка "мод моего проекта" появится здесь же.
           unzip mod.zip -d ./project
           echo "=== Содержимое папки project ==="
           ls -la ./project
 
       - name: Compile Laird
         run: |
-          # Ищем файл laird.pwn во всех вложенных папках
-          PWN_FILE=$(find ./project -name "laird.pwn" | head -n 1)
+          # Заходим в папку "мод моего проекта" напрямую
+          cd "./project/мод моего проекта"
           
-          if [ -z "$PWN_FILE" ]; then
-            echo "ОШИБКА: Файл laird.pwn не найден!"
-            exit 1
-          fi
+          # Заходим в gamemodes и компилируем
+          cd gamemodes
           
-          echo "=== Найден файл: $PWN_FILE ==="
-          
-          # Переходим в папку, где лежит файл (скорее всего, это gamemodes)
-          cd $(dirname "$PWN_FILE")
-          
-          # Запускаем компилятор, подсовывая ему все возможные варианты путей к инклудам
-          # Мы используем -i несколько раз, чтобы он искал в разных местах
-          pawncc laird.pwn \
-            -i pawno/include \
-            -i ../pawno/include \
-            -i include \
-            -i ../include \
-            -i ../../pawno/include \
-            -d3 -Z
+          # Запускаем компилятор, указывая путь к инклудам на уровень выше
+          pawncc laird.pwn -i ../pawno/include -d3 -Z
 
       - name: Upload compiled AMX
         uses: actions/upload-artifact@v4
         with:
           name: laird-amx
-          # Ищем файл .amx, где бы он ни оказался
+          # Ищем файл .amx
           path: project/**/*.amx
