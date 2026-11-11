@@ -10,8 +10,11 @@ jobs:
     runs-on: ubuntu-latest
     container: sacnr/pawncc
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      # 1. Удаляем checkout и клонируем вручную (обход отсутствия Node)
+      - name: Checkout (plain git)
+        run: |
+          git clone --depth 1 https://github.com/${{ github.repository }}.git .
+          ls -la
 
       - name: Unzip project
         run: |
@@ -19,9 +22,6 @@ jobs:
           ls -la ./project
 
       - name: Compile Laird
-        # -i указывает путь к инклудам (внутри распакованной папки)
-        # -d3 включает отладочную информацию (можно убрать)
-        # -Z включает совместимость (оставляем как в стандартных конфигах для SA-MP)
         run: |
           cd ./project
           /pawnc/bin/pawncc gamemodes/laird.pwn -i pawno/include -d3 -Z
@@ -30,5 +30,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: laird-amx
-          # Ищем файл .amx по всей папке project
           path: project/**/*.amx
