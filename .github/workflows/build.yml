@@ -1,16 +1,42 @@
-- name: Install 32-bit libs
-  run: |
-    sudo dpkg --add-architecture i386
-    sudo apt-get update
-    sudo apt-get install -y libc6:i386
+name: Build Laird Mod
 
-- name: Download Pawn compiler
-  run: |
-    wget -O pawncc.tar.gz https://github.com/pawn-lang/compiler/releases/download/v3.10.10/pawnc-3.10.10-linux.tar.gz
-    tar -xzf pawncc.tar.gz
-    chmod +x pawnc-3.10.10-linux/bin/pawncc
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
 
-- name: Compile Laird
-  run: |
-    cd ./project
-    ../pawnc-3.10.10-linux/bin/pawncc gamemodes/laird.pwn -i pawno/include -d3 -Z
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: michaelace/pawncc:3.10.10-linux
+    steps:
+      # 1. Устанавливаем unzip (в образе его нет)
+      - name: Install unzip
+        run: |
+          apt-get update && apt-get install -y unzip
+
+      # 2. Клонируем репозиторий (checkout не работает в этом образе из-за Node)
+      - name: Clone repo
+        run: |
+          # Устанавливаем git, если его нет (обычно в Debian/Ubuntu он есть, но на всякий случай)
+          apt-get install -y git
+          git clone --depth 1 https://github.com/${{ github.repository }}.git .
+
+      # 3. Распаковываем архив
+      - name: Unzip project
+        run: |
+          unzip mod.zip -d ./project
+          ls -la ./project
+
+      # 4. Компилируем
+      - name: Compile Laird
+        run: |
+          cd ./project
+          pawncc gamemodes/laird.pwn -i pawno/include -d3 -Z
+
+      # 5. Выгружаем результат
+      - name: Upload compiled AMX
+        uses: actions/upload-artifact@v4
+        with:
+          name: laird-amx
+          path: project/**/*.amx
