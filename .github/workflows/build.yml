@@ -10,33 +10,48 @@ jobs:
     runs-on: ubuntu-latest
     container: michaelace/pawncc:3.10.10-linux
     steps:
-      # 1. Устанавливаем unzip (в образе его нет)
-      - name: Install unzip
+      - name: Install dependencies
         run: |
-          apt-get update && apt-get install -y unzip
+          apt-get update && apt-get install -y unzip git
 
-      # 2. Клонируем репозиторий (checkout не работает в этом образе из-за Node)
       - name: Clone repo
         run: |
-          # Устанавливаем git, если его нет (обычно в Debian/Ubuntu он есть, но на всякий случай)
-          apt-get install -y git
           git clone --depth 1 https://github.com/${{ github.repository }}.git .
 
-      # 3. Распаковываем архив
       - name: Unzip project
         run: |
           unzip mod.zip -d ./project
+          echo "=== Содержимое папки project ==="
           ls -la ./project
 
-      # 4. Компилируем
       - name: Compile Laird
         run: |
-          cd ./project
-          pawncc gamemodes/laird.pwn -i pawno/include -d3 -Z
+          # Ищем файл laird.pwn во всех вложенных папках
+          PWN_FILE=$(find ./project -name "laird.pwn" | head -n 1)
+          
+          if [ -z "$PWN_FILE" ]; then
+            echo "ОШИБКА: Файл laird.pwn не найден!"
+            exit 1
+          fi
+          
+          echo "=== Найден файл: $PWN_FILE ==="
+          
+          # Переходим в папку, где лежит файл (скорее всего, это gamemodes)
+          cd $(dirname "$PWN_FILE")
+          
+          # Запускаем компилятор, подсовывая ему все возможные варианты путей к инклудам
+          # Мы используем -i несколько раз, чтобы он искал в разных местах
+          pawncc laird.pwn \
+            -i pawno/include \
+            -i ../pawno/include \
+            -i include \
+            -i ../include \
+            -i ../../pawno/include \
+            -d3 -Z
 
-      # 5. Выгружаем результат
       - name: Upload compiled AMX
         uses: actions/upload-artifact@v4
         with:
           name: laird-amx
+          # Ищем файл .amx, где бы он ни оказался
           path: project/**/*.amx
