@@ -9,44 +9,50 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      # 1. Скачиваем твой mod.zip напрямую по ссылке
       - name: Download mod.zip
         run: |
           curl -L -o mod.zip https://github.com/ila401444-create/Laird-mod/raw/main/mod.zip
           ls -la mod.zip
 
-      # 2. Распаковываем
       - name: Unzip project
         run: |
           unzip mod.zip -d ./project
           echo "=== Содержимое ==="
           ls -la ./project
 
-      # 3. Скачиваем компилятор Pawn для Linux
       - name: Download Pawn Compiler
         run: |
           curl -L -o pawncc.tar.gz https://github.com/pawn-lang/compiler/releases/download/v3.10.10/pawnc-3.10.10-linux.tar.gz
           tar -xzf pawncc.tar.gz
-          ls -la pawnc-3.10.10-linux/bin/
+          echo "=== Структура компилятора ==="
+          find pawnc-3.10.10-linux -maxdepth 3 -type f | sort
 
-      # 4. Устанавливаем 32-битные библиотеки
       - name: Install 32-bit libs
         run: |
           sudo dpkg --add-architecture i386
           sudo apt-get update
           sudo apt-get install -y libc6:i386
 
-      # 5. Компилируем (с указанием пути к библиотеке libpawnc.so)
       - name: Compile Laird
         run: |
-          cd "./project/мод моего проекта/gamemodes"
-          
-          # Добавляем путь к папке bin в LD_LIBRARY_PATH
-          export LD_LIBRARY_PATH="../../../pawnc-3.10.10-linux/bin:$LD_LIBRARY_PATH"
-          
-          ../../../pawnc-3.10.10-linux/bin/pawncc laird.pwn -i ../pawno/include -d3 -Z
+          set -euxo pipefail
 
-      # 6. Забираем результат
+          cd "./project/мод моего проекта/gamemodes"
+
+          COMPILER_ROOT="$(pwd)/../../../pawnc-3.10.10-linux"
+          LIB_DIR="$(find "$COMPILER_ROOT" -type f -name 'libpawnc.so' -printf '%h' | head -n 1)"
+
+          if [ -z "${LIB_DIR:-}" ]; then
+            echo "libpawnc.so not found under $COMPILER_ROOT"
+            find "$COMPILER_ROOT" -maxdepth 4 -type f | sort
+            exit 1
+          fi
+
+          export LD_LIBRARY_PATH="$LIB_DIR:${LD_LIBRARY_PATH:-}"
+          echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
+
+          "$COMPILER_ROOT/bin/pawncc" laird.pwn -i ../pawno/include -d3 -Z
+
       - name: Upload compiled AMX
         uses: actions/upload-artifact@v4
         with:
