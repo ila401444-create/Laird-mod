@@ -1,0 +1,34 @@
+name: Build Laird Mod
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: sacnr/pawncc
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Unzip project
+        run: |
+          unzip mod.zip -d ./project
+          ls -la ./project
+
+      - name: Compile Laird
+        # -i указывает путь к инклудам (внутри распакованной папки)
+        # -d3 включает отладочную информацию (можно убрать)
+        # -Z включает совместимость (оставляем как в стандартных конфигах для SA-MP)
+        run: |
+          cd ./project
+          /pawnc/bin/pawncc gamemodes/laird.pwn -i pawno/include -d3 -Z
+
+      - name: Upload compiled AMX
+        uses: actions/upload-artifact@v4
+        with:
+          name: laird-amx
+          # Ищем файл .amx по всей папке project
+          path: project/**/*.amx
